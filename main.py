@@ -85,10 +85,9 @@ class Game:
         for x, y in self.grid.path:
             self.grid.matrix[y][x] = 'P'
         self.font = pygame.font.SysFont(None, 30)
-        self.tourist = Tourist(self.path)
+
         self.alert_font = pygame.font.SysFont(None, 40)
-        self.alert_text = ""
-        self.alert_timer = 0
+        self.alerts = []
 
         self.weather_data = self.get_weather('ae1ead0422cc09d560db427bbc7c76c2')
 
@@ -100,14 +99,14 @@ class Game:
             self.humidity_text = f"Humidity: {self.weather_data[2]}%"
             self.wind_text = f"Wind Speed: {self.weather_data[3]} m/s"
 
-        #Warunki pogodowe
         self.temperature = self.weather_data[1]
         self.wind = self.weather_data[3]
         self.humidity = self.weather_data[2]
-        self.avalanche = 2
-
+        self.avalanche = 0
+        if self.avalanche!=0:
+            self.alerts.append("Poziom zagrożenia lawinowego: " + str(self.avalanche))
         self.hiking_ability = self.calculate_hiking_ability()
-
+        self.tourist = Tourist(self.path,self.hiking_ability)
 
 
     def get_weather(self, api_key):
@@ -152,24 +151,50 @@ class Game:
     def distance(self, x1, y1, x2, y2):
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-    def draw_alert(self):
-        if self.alert_timer > 0:
-            alert_surface = self.alert_font.render(self.alert_text, True, RED)
-            alert_rect = alert_surface.get_rect(bottomright=(WIDTH - 10, HEIGHT - 10))
+    def check_tourist_position(self):
+        for i in self.path:
+            distance=distance(i[0],i[1],self.tourist.x,self.tourist.y)
+            if distance>3:
+                self.alerts.append("Turysta się zgubił!")
+
+    def add_alert(self, alert_text):
+        if alert_text not in self.alerts:
+            self.alerts.append(alert_text)
+
+    def draw_alerts(self):
+        y_offset = HEIGHT - 10
+        for alert in self.alerts:
+            alert_surface = self.alert_font.render(alert, True, RED)
+            alert_rect = alert_surface.get_rect(bottomright=(WIDTH - 10, y_offset-10))
             pygame.draw.rect(self.win, WHITE, alert_rect)
             self.win.blit(alert_surface, alert_rect)
+            y_offset -= alert_rect.height + 5
 
     def check_tourist_animal_proximity(self):
         tourist_x, tourist_y = self.tourist.x, self.tourist.y
+        tourist_close = False
         for animal in self.grid.animals:
             animal_x, animal_y = animal.x, animal.y
             dist = self.distance(tourist_x, tourist_y, animal_x, animal_y)
-            if dist <= 10:
-                self.alert_text = "Turysta jest za blisko zwierzęcia!"
-                self.alert_timer = 3 * 1000
-                return
-            else:
-                self.alert_text=""
+            if dist < 8:
+                tourist_close = True
+                break
+
+        if tourist_close and "Turysta zbyt blisko zwierzęcia!" not in self.alerts:
+            self.add_alert("Turysta zbyt blisko zwierzęcia!")
+        elif not tourist_close and "Turysta zbyt blisko zwierzęcia!" in self.alerts:
+            self.alerts.remove("Turysta zbyt blisko zwierzęcia!")
+
+    def check_hiking_ability_alert(self):
+        if self.hiking_ability == 5:
+            self.add_alert("Ekstremalnie niebezpieczne warunki pogodowe!")
+        elif self.hiking_ability == 4:
+            self.add_alert("Niebezpieczne warunki pogodowe!")
+        else:
+            if "Ekstremalnie niebezpieczne warunki pogodowe!" in self.alerts:
+                self.alerts.remove("Ekstremalnie niebezpieczne warunki pogodowe!")
+            elif "Niebezpieczne warunki pogodowe!" in self.alerts:
+                self.alerts.remove("Niebezpieczne warunki pogodowe!")
 
     def run(self):
         running = True
@@ -179,19 +204,20 @@ class Game:
                     running = False
 
             self.win.fill(WHITE)
+            self.check_hiking_ability_alert()
 
             current_time = pygame.time.get_ticks()
             if current_time - self.tourist.last_move_time > self.tourist.move_delay:
                 self.tourist.move(self.grid.matrix)
                 self.tourist.last_move_time = current_time
-
                 self.check_tourist_animal_proximity()
+
 
             self.grid.draw(self.win)
 
             self.grid.move_animals()
 
-            self.draw_alert()
+            self.draw_alerts()
 
             self.set_weather()
 
@@ -201,45 +227,79 @@ class Game:
         sys.exit()
 
     def calculate_hiking_ability(self):
-            if self.temperature > 15 and self.wind < 10 and self.humidity < 50:
+            if self.temperature > 15 and self.wind < 10:
                 hiking_ability = 1
-            elif self.temperature > 10 and self.wind < 15 and self.humidity < 60:
+            elif self.temperature > 10 and self.wind < 15:
                 hiking_ability = 2
-            elif self.temperature > 5 and self.wind < 20 and self.humidity < 70:
+            elif self.temperature > 5 and self.wind < 20:
                 hiking_ability = 3
-            elif self.temperature > 0 and self.wind < 25 and self.humidity < 80:
+            elif self.temperature > 0 and self.wind < 25:
                 hiking_ability = 4
             else:
                 hiking_ability = 5
             return hiking_ability
 
-
 class Tourist:
-    def __init__(self, path):
+    def __init__(self, path,hiking_ability):
         self.path = path
         self.index = -1
-        self.pos = path[self.index]
-        self.x, self.y = self.pos
+        self.pos = None
+        self.x, self.y = 0, 29
+        self.hiking_ability=hiking_ability
         self.last_move_time = pygame.time.get_ticks()
         self.move_delay = 1000
-        self.move_prob = 0.9
+        self.move_prob = self.calculate_probability()
+        self.previous_pos = None
+
+    def calculate_probability(self):
+        if self.hiking_ability == 1:
+            return 0.9
+        elif self.hiking_ability == 2:
+            return 0.8
+        elif self.hiking_ability == 3:
+            return 0.7
+        elif self.hiking_ability == 4:
+            return 0.6
+        else:
+            return 0.5
 
     def move(self, matrix):
         old_x, old_y = self.x, self.y
-        matrix[old_y][old_x] = 'P'
 
-        if random.random() > self.move_prob:
+        # Zapisz poprzednią pozycję przed ruchem
+        self.previous_pos = (old_x, old_y)
+
+        if (old_x, old_y) not in self.path:
+            matrix[old_y][old_x] = 'L'
+        else:
+            matrix[old_y][old_x] = 'P'
+
+        if random.random() <= (1 - self.move_prob)*2-0.2:
+            self.x, self.y = old_x,old_y
             matrix[self.y][self.x] = 'T'
             return
 
+        # Sprawdź, czy turysta ma opuścić szlak
+        if random.random() <= 1-self.move_prob:
+            possible_positions = []
+            self.index -=1
+            for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+                new_x, new_y = old_x + dx, old_y + dy
+                if 0 <= new_x < COLS and 0 <= new_y < ROWS and matrix[new_y][new_x] == 'L':
+                    possible_positions.append((new_x, new_y))
+
+            if possible_positions:
+                self.x, self.y = random.choice(possible_positions)
+                matrix[self.y][self.x] = 'T'  # Umieść turystę w nowej pozycji
+                return
+
+        # Pozostanie na trasie
         self.index += 1
         if self.index >= len(self.path):
             self.index = 0
         self.pos = self.path[self.index]
         self.x, self.y = self.pos
-        matrix[self.y][self.x] = 'T'
-
-
+        matrix[self.y][self.x] = 'T'  # Aktualizuj pozycję turysty
 
 class Animal:
     def __init__(self, x, y, path):
