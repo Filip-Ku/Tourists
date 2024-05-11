@@ -24,12 +24,8 @@ class Grid:
     def __init__(self, path):
         self.path = path
         self.matrix = [['L' for _ in range(COLS)] for _ in range(ROWS)]
-        self.free_cells = [(x, y) for y in range(ROWS) for x in range(COLS) if self.matrix[y][x] == 'L']
+        self.free_cells = [(x, y) for y in range(ROWS) for x in range(COLS) if self.matrix[y][x] == 'L' and (y,x) not in self.path]
         self.animals = []
-
-        # Dodanie zwierząt na mapie
-        self.add_animal('Z')
-        self.add_animal('J')
 
     def draw(self, win):
         for x in range(0, WIDTH, CELL_SIZE):
@@ -45,7 +41,7 @@ class Grid:
                     pygame.draw.rect(win, BLACK, (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))
                 elif self.matrix[row][col] == 'T':
                     pygame.draw.rect(win, BLUE, (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-                elif self.matrix[row][col] in ['Z', 'J']:
+                elif self.matrix[row][col] == 'Z':
                     pygame.draw.rect(win, RED, (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
         for x in range(0, WIDTH, CELL_SIZE):
@@ -53,10 +49,10 @@ class Grid:
         for y in range(0, HEIGHT, CELL_SIZE):
             pygame.draw.line(win, GRID_COLOR, (0, y), (WIDTH, y))
 
-    def add_animal(self, animal_type):
+    def add_animal(self, animal_type, hiking_ability):
         x, y = random.choice(self.free_cells)
         self.matrix[y][x] = animal_type
-        self.animals.append(Animal(x, y, self.path))
+        self.animals.append(Animal(x, y, self.path,hiking_ability))
 
     def move_animals(self):
         current_time = pygame.time.get_ticks()
@@ -107,7 +103,8 @@ class Game:
             self.alerts.append("Poziom zagrożenia lawinowego: " + str(self.avalanche))
         self.hiking_ability = self.calculate_hiking_ability()
         self.tourist = Tourist(self.path,self.hiking_ability)
-
+        self.grid.add_animal('Z', self.hiking_ability)
+        self.grid.add_animal('Z', self.hiking_ability)
 
     def get_weather(self, api_key):
         url = f"http://api.openweathermap.org/data/2.5/weather?q=Zakopane&appid={api_key}&units=metric"
@@ -152,10 +149,16 @@ class Game:
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
     def check_tourist_position(self):
-        for i in self.path:
-            distance=distance(i[0],i[1],self.tourist.x,self.tourist.y)
-            if distance>3:
-                self.alerts.append("Turysta się zgubił!")
+        min_dist = float('inf')
+        for path_x, path_y in self.path:
+            dist = self.distance(self.tourist.x, self.tourist.y, path_x, path_y)
+            min_dist = min(min_dist, dist)
+
+        if min_dist > 2:
+            self.add_alert("Turysta się zgubił!")
+        else:
+            if "Turysta się zgubił!" in self.alerts:
+                self.alerts.remove("Turysta się zgubił!")
 
     def add_alert(self, alert_text):
         if alert_text not in self.alerts:
@@ -176,7 +179,7 @@ class Game:
         for animal in self.grid.animals:
             animal_x, animal_y = animal.x, animal.y
             dist = self.distance(tourist_x, tourist_y, animal_x, animal_y)
-            if dist < 8:
+            if dist < 5:
                 tourist_close = True
                 break
 
@@ -211,7 +214,7 @@ class Game:
                 self.tourist.move(self.grid.matrix)
                 self.tourist.last_move_time = current_time
                 self.check_tourist_animal_proximity()
-
+                self.check_tourist_position()
 
             self.grid.draw(self.win)
 
@@ -227,13 +230,13 @@ class Game:
         sys.exit()
 
     def calculate_hiking_ability(self):
-            if self.temperature > 15 and self.wind < 10:
+            if self.temperature > 15 and self.wind < 15:
                 hiking_ability = 1
-            elif self.temperature > 10 and self.wind < 15:
+            elif self.temperature > 10 and self.wind < 20 and self.avalanche<2:
                 hiking_ability = 2
-            elif self.temperature > 5 and self.wind < 20:
+            elif self.temperature > 0 and self.wind < 25 and self.avalanche<3:
                 hiking_ability = 3
-            elif self.temperature > 0 and self.wind < 25:
+            elif self.temperature > -5 and self.wind < 30 and self.avalanche<4:
                 hiking_ability = 4
             else:
                 hiking_ability = 5
@@ -266,7 +269,6 @@ class Tourist:
     def move(self, matrix):
         old_x, old_y = self.x, self.y
 
-        # Zapisz poprzednią pozycję przed ruchem
         self.previous_pos = (old_x, old_y)
 
         if (old_x, old_y) not in self.path:
@@ -274,35 +276,48 @@ class Tourist:
         else:
             matrix[old_y][old_x] = 'P'
 
-        if random.random() <= (1 - self.move_prob)*2-0.2:
+        if random.random() <= 1 - self.move_prob:
             self.x, self.y = old_x,old_y
             matrix[self.y][self.x] = 'T'
             return
 
-        # Sprawdź, czy turysta ma opuścić szlak
-        if random.random() <= 1-self.move_prob:
+        if random.random() <= (1-self.move_prob)/2:
             possible_positions = []
-            self.index -=1
             for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
                 new_x, new_y = old_x + dx, old_y + dy
-                if 0 <= new_x < COLS and 0 <= new_y < ROWS and matrix[new_y][new_x] == 'L':
+                if 0 <= new_x < COLS and 0 <= new_y < ROWS and (new_x,new_y) not in self.path:
                     possible_positions.append((new_x, new_y))
-
+                    if self.previous_pos in possible_positions:
+                        possible_positions.remove(self.previous_pos)
             if possible_positions:
                 self.x, self.y = random.choice(possible_positions)
-                matrix[self.y][self.x] = 'T'  # Umieść turystę w nowej pozycji
+                matrix[self.y][self.x] = 'T'
                 return
 
-        # Pozostanie na trasie
-        self.index += 1
-        if self.index >= len(self.path):
-            self.index = 0
-        self.pos = self.path[self.index]
-        self.x, self.y = self.pos
-        matrix[self.y][self.x] = 'T'  # Aktualizuj pozycję turysty
+        if self.previous_pos in self.path:
+            self.index += 1
+            if self.index >= len(self.path):
+                self.index = 0
+            self.pos = self.path[self.index]
+            self.x, self.y = self.pos
+            matrix[self.y][self.x] = 'T'
+        else:
+            next_x, next_y = self.path[(self.index + 1) % len(self.path)]
+            diff_x, diff_y = next_x - self.x, next_y - self.y
+            if random.random() > 0.5:
+                if diff_x > 0:
+                    self.x += 1
+                elif diff_x < 0:
+                    self.x -= 1
+            else:
+                if diff_y > 0:
+                    self.y += 1
+                elif diff_y < 0:
+                    self.y -= 1
+            matrix[self.y][self.x] = 'T'
 
 class Animal:
-    def __init__(self, x, y, path):
+    def __init__(self, x, y, path,hiking_ability):
         self.x = x
         self.y = y
         self.path = path
@@ -310,32 +325,38 @@ class Animal:
         self.last_move_time = pygame.time.get_ticks()
         self.disappeared = False
         self.disappearance_x = None
+        self.hiking_ability=hiking_ability
+        self.move_prob=self.calculate_probability()
         self.disappearance_y = None
         self.disappear_time = None
+
+    def calculate_probability(self):
+        if self.hiking_ability == 1:
+            return 0.9
+        elif self.hiking_ability == 2:
+            return 0.7
+        elif self.hiking_ability == 3:
+            return 0.6
+        elif self.hiking_ability == 4:
+            return 0.4
+        else:
+            return 0.2
 
     def move(self, matrix):
         old_x, old_y = self.x, self.y
 
         if not self.disappeared:
             matrix[old_y][old_x] = 'L'
-
             if (old_x, old_y) in self.path:
                 matrix[old_y][old_x] = 'P'
 
-        if not self.disappeared:
-            x, y = random.choice(
-                [(old_x + 1, old_y), (old_x - 1, old_y), (old_x, old_y + 1), (old_x, old_y - 1), (old_x, old_y)])
+        if old_x < 0 or old_x >= COLS or old_y < 0 or old_y >= ROWS:
+            self.disappeared = True
+            self.disappearance_x = old_x
+            self.disappearance_y = old_y
+            self.disappear_time = pygame.time.get_ticks()
 
-            if x < 0 or x >= COLS or y < 0 or y >= ROWS:
-                self.disappeared = True
-                self.disappearance_x = old_x
-                self.disappearance_y = old_y
-                self.disappear_time = pygame.time.get_ticks()
-            else:
-                self.x, self.y = x, y
-                matrix[y][x] = 'Z'
-
-        if self.disappeared and pygame.time.get_ticks() - self.disappear_time > 2000:
+        if self.disappeared and pygame.time.get_ticks() - self.disappear_time > random.randrange(1000, 6000, 1000):
             possible_positions = [
                 (x, y) for x in range(max(0, self.disappearance_x - 1), min(COLS, self.disappearance_x + 2))
                 for y in range(max(0, self.disappearance_y - 1), min(ROWS, self.disappearance_y + 2))
@@ -346,8 +367,26 @@ class Animal:
                 self.x, self.y = x, y
                 self.disappeared = False
                 matrix[y][x] = 'Z'
+        else:
+            if not self.disappeared and (old_x, old_y) not in self.path:
+                if random.random() <= (1 - self.move_prob):
+                    self.x, self.y = old_x, old_y
+                    matrix[self.y][self.x] = 'Z'
+                    return
 
-# Uruchomienie gry
+                x, y = random.choice(
+                    [(old_x + 1, old_y), (old_x - 1, old_y), (old_x, old_y + 1), (old_x, old_y - 1)])
+
+                if 0 <= x < COLS and 0 <= y < ROWS:
+                    self.x, self.y = x, y
+                    matrix[y][x] = 'Z'
+                else:
+                    self.disappeared = True
+                    self.disappearance_x = old_x
+                    self.disappearance_y = old_y
+                    self.disappear_time = pygame.time.get_ticks()
+
+
 if __name__ == "__main__":
     game = Game()
     game.run()
