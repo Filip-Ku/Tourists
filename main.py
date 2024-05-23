@@ -23,6 +23,15 @@ EXPERIENCED_COLOR = (255, 165, 0)
 PROFESSIONAL_COLOR = (128, 0, 128)
 GRID_COLOR = BLACK
 
+LEGEND_BTN_COLOR = (200, 200, 200)
+LEGEND_BTN_HOVER_COLOR = (150, 150, 150)
+LEGEND_BTN_TEXT_COLOR = BLACK
+
+# Rozmiary przycisku
+LEGEND_BTN_WIDTH = 100
+LEGEND_BTN_HEIGHT = 40
+
+
 class Grid:
     def __init__(self, path):
         self.path = path
@@ -66,6 +75,8 @@ class Grid:
         for y in range(0, HEIGHT, CELL_SIZE):
             pygame.draw.line(win, GRID_COLOR, (0, y), (WIDTH, y))
 
+        self.draw_button(win)
+
     def add_animal(self, animal_type, hiking_ability):
         x, y = random.choice(self.free_cells)
         self.matrix[y][x] = animal_type
@@ -81,6 +92,16 @@ class Grid:
             if current_time - animal.last_move_time > animal.move_delay:
                 animal.move(self.matrix)
                 animal.last_move_time = current_time
+
+    def draw_button(self,screen):
+        pygame.draw.rect(screen, BLACK, (WIDTH-LEGEND_BTN_WIDTH-10,10, LEGEND_BTN_WIDTH, LEGEND_BTN_HEIGHT))
+
+        font = pygame.font.SysFont(None, 24)
+        text_surface = font.render("Legenda", True, WHITE)
+        text_rect = text_surface.get_rect(center=((WIDTH-LEGEND_BTN_WIDTH-10)+50, 30))
+
+        screen.blit(text_surface, text_rect)
+
 
 
 # Zarządzanie grą
@@ -225,41 +246,117 @@ class Game:
             elif "Niebezpieczne warunki pogodowe!" in self.alerts:
                 self.alerts.remove("Niebezpieczne warunki pogodowe!")
 
+    def draw_legend(self, screen):
+        BEGINNER_COLOR = (0, 255, 255)
+        EXPERIENCED_COLOR = (255, 165, 0)
+        PROFESSIONAL_COLOR = (128, 0, 128)
+        BLACK = (0, 0, 0)
+        GREEN = (0, 200, 0)
+        GRAY = (200, 200, 200)
+        ORANGE = (255, 165, 0)
+
+        font = pygame.font.SysFont(None, 30)
+
+        legend_width = 400
+        legend_height = 250
+        legend_x = (WIDTH - legend_width) // 2
+        legend_y = (HEIGHT - legend_height) // 2
+
+        pygame.draw.rect(screen, ORANGE, (legend_x-5, legend_y-5, legend_width+10, legend_height+10))
+        # Rysowanie prostokąta tła
+        pygame.draw.rect(screen, GRAY, (legend_x, legend_y, legend_width, legend_height))
+
+        font = pygame.font.SysFont("comicsansms", 36)
+        title_text = font.render("Legenda:", True, BLACK)
+        title_text_rect = title_text.get_rect(center=(legend_x + legend_width // 2, legend_y + 20))
+        screen.blit(title_text, title_text_rect)
+
+        # Rysowanie elementów legendy
+        text_y = legend_y + 50
+        item_spacing = 30
+
+        font = pygame.font.SysFont("comicsansms", 16)
+        text = font.render("Turysta początkujący", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, BEGINNER_COLOR, (legend_x + 20, text_y, 20, 20))
+
+        text_y += item_spacing
+
+        text = font.render("Turysta średniozaawansowany ", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, EXPERIENCED_COLOR, (legend_x + 20, text_y, 20, 20))
+
+        text_y += item_spacing
+
+        text = font.render("Turysta profesjonalista", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, PROFESSIONAL_COLOR, (legend_x + 20, text_y, 20, 20))
+
+        text_y += item_spacing
+
+        text = font.render("Ścieżka/szlak", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, BLACK, (legend_x + 20, text_y, 20, 20))
+
+        text_y += item_spacing
+
+        text = font.render("Las", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, GREEN, (legend_x + 20, text_y, 20, 20))
+
+        text_y += item_spacing
+
+        text = font.render("Dzikie zwierzęta", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, RED, (legend_x + 20, text_y, 20, 20))
+
     def run(self):
         running = True
+        hover = False  # Dodajemy flagę do śledzenia najechania myszą
+
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame.MOUSEMOTION:  # Obsługa zdarzenia najechania myszą
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    legend_button_x = WIDTH - LEGEND_BTN_WIDTH - 10
+                    legend_button_y = 10
+                    # Sprawdzamy, czy kursor myszy najechał na przycisk "Legenda"
+                    if (legend_button_x <= mouse_x <= legend_button_x + LEGEND_BTN_WIDTH and
+                            legend_button_y <= mouse_y <= legend_button_y + LEGEND_BTN_HEIGHT):
+                        hover = True
+                        self.draw_legend(self.win)
+                    else:
+                        hover = False
 
-            self.win.fill(WHITE)
-            self.check_hiking_ability_alert()
-
-            current_time = pygame.time.get_ticks()
 
 
-            for tourist in self.grid.tourists:
-                if current_time - tourist.last_move_time > tourist.move_delay:
-                    tourist.move(self.grid.matrix)
-                    tourist.last_move_time = current_time
-                    self.check_tourist_animal_proximity()
-                    self.check_tourist_position()
-                    print(tourist.level,tourist.x,tourist.y)
+            if not hover:  # Jeśli kursor myszy nie najechał na przycisk "Legenda", kontynuuj grę
+                self.win.fill(WHITE)
+                self.check_hiking_ability_alert()
 
-            self.grid.draw(self.win)
+                current_time = pygame.time.get_ticks()
 
-            self.grid.move_animals()
+                for tourist in self.grid.tourists:
+                    if current_time - tourist.last_move_time > tourist.move_delay:
+                        tourist.move(self.grid.matrix)
+                        tourist.last_move_time = current_time
+                        self.check_tourist_animal_proximity()
+                        self.check_tourist_position()
 
-            self.draw_alerts()
+                self.grid.draw(self.win)
 
-            self.set_weather()
+                self.grid.move_animals()
+
+                self.draw_alerts()
+
+                self.set_weather()
 
             pygame.display.update()
 
         pygame.quit()
         sys.exit()
-
-
 
     def calculate_hiking_ability(self):
             if self.temperature > 15 and self.wind < 15:
