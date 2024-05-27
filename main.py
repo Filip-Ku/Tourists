@@ -19,7 +19,7 @@ BEGINNER_COLOR = (0, 255, 255)
 EXPERIENCED_COLOR = (255, 165, 0)
 PROFESSIONAL_COLOR = (128, 0, 128)
 GRID_COLOR = BLACK
-YELLOW=(255,214,77)
+YELLOW = (255, 214, 77)
 
 LEGEND_BTN_COLOR = (200, 200, 200)
 LEGEND_BTN_HOVER_COLOR = (150, 150, 150)
@@ -36,10 +36,16 @@ class Grid:
                            self.matrix[y][x] == 'L' and (y, x) not in self.path]
         self.animals = []
         self.tourists = []
+        self.group = None
 
     def draw(self, win):
         for tourist in self.tourists:
-            self.matrix[tourist.y][tourist.x] = "T"
+            if not tourist.disappear:
+                self.matrix[tourist.y][tourist.x] = "T"
+            else:
+                self.tourists.remove(tourist)
+
+        self.matrix[self.group.y][self.group.x] = "G"
 
         for row in range(ROWS):
             for col in range(COLS):
@@ -66,6 +72,10 @@ class Grid:
                     animals_on_tile = [animal for animal in self.animals if animal.x == col and animal.y == row]
                     for animal in animals_on_tile:
                         animal.draw(win, col * CELL_SIZE + CELL_SIZE // 2, row * CELL_SIZE + CELL_SIZE // 2)
+                else:
+                    pygame.draw.rect(win, BLACK, (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                    self.group.draw(win, self.group.x * CELL_SIZE + CELL_SIZE // 2,
+                                    self.group.y * CELL_SIZE + CELL_SIZE // 2)
 
         for x in range(0, WIDTH, CELL_SIZE):
             pygame.draw.line(win, GRID_COLOR, (x, 0), (x, HEIGHT))
@@ -94,6 +104,19 @@ class Grid:
                 animal.move(self.matrix)
                 animal.last_move_time = current_time
 
+    def add_group(self, hiking_ability):
+        self.group = Group(self.path, hiking_ability, "experienced")
+
+    def move_group(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.group.last_move_time > self.group.move_delay:
+            self.group.move(self.matrix)
+            self.group.last_move_time = current_time
+            if random.random()>0.97:
+                self.tourists.append(
+                    Tourist(self.path,self.group.index,self.group.hiking_ability,
+                            random.choice(["beginner", "experienced", "professional"]),random.choice([True, False])))
+
     def draw_button(self, screen):
         pygame.draw.rect(screen, BLACK, (WIDTH - LEGEND_BTN_WIDTH - 10, 10, LEGEND_BTN_WIDTH, LEGEND_BTN_HEIGHT))
 
@@ -108,7 +131,7 @@ class Grid:
 
         text_trudna = font.render("Trudna ścieżka", True, BLACK)
         text_rect_trudna = text_trudna.get_rect()
-        text_rect_trudna.topleft = (36 * 30-15, 12 * 30 - 50)
+        text_rect_trudna.topleft = (36 * 30 - 15, 12 * 30 - 50)
 
         text_rect_trudna.inflate_ip(10, 5)
 
@@ -116,8 +139,9 @@ class Grid:
 
         text_x = text_rect_trudna.x + (text_rect_trudna.width - text_trudna.get_width()) // 2
         text_y = text_rect_trudna.y + (text_rect_trudna.height - text_trudna.get_height()) // 2
-        screen.blit(text_trudna,  (text_x, text_y))
-        pygame.draw.polygon(screen, RED, [(40 * 30-10, 12 * 30 - 31), (40 * 30-10, 12 * 30 - 51), (40 * 30+10, 12 * 30 - 41)])
+        screen.blit(text_trudna, (text_x, text_y))
+        pygame.draw.polygon(screen, RED,
+                            [(40 * 30 - 10, 12 * 30 - 31), (40 * 30 - 10, 12 * 30 - 51), (40 * 30 + 10, 12 * 30 - 41)])
 
         text_latwa = font.render("Łatwa ścieżka", True, BLACK)
         text_rect_latwa = text_latwa.get_rect()
@@ -131,7 +155,7 @@ class Grid:
         text_y = text_rect_latwa.y + (text_rect_latwa.height - text_latwa.get_height()) // 2
         screen.blit(text_latwa, (text_x, text_y))
         pygame.draw.polygon(screen, BLUE,
-                            [(42 * 30 +5, 19 * 30 +4), (42 * 30 +5, 19 * 30+24), (42 * 30 +25, 19 * 30 +14)])
+                            [(42 * 30 + 5, 19 * 30 + 4), (42 * 30 + 5, 19 * 30 + 24), (42 * 30 + 25, 19 * 30 + 14)])
 
 class Game:
     def __init__(self):
@@ -146,12 +170,12 @@ class Game:
             (18, 7), (19, 7), (19, 6), (19, 5), (19, 4), (20, 4), (21, 4), (21, 3), (21, 2),
             (22, 2), (23, 2), (23, 3), (23, 4), (24, 4), (24, 5), (24, 6), (25, 6), (25, 7),
             (26, 7), (27, 7), (28, 7), (28, 8), (28, 9), (28, 10), (29, 10), (30, 10), (31, 10),
-            (32,10), (32,11), (32, 12), (33,12), (33,13),(33,14),(33,15), (34,15),(35, 15),
-            (36,15),(36,14),(37,14),(37,13),(38,13),(38,12),(39,12),(40,12),(40,11),
-            (41,11),(41,10),(41,9),(42,9),(43,9),(43,8),(43,7),(44,7),(45,7),(45,6),(46,6),
-            (47,6),(36,16),(37,16),(37,17),(37,18),(37,19),(37,20),(38,20),(39,20),(39,21),(40,21),
-            (41,21),(41,22),(42,22),(42,23),(43,23),(43,24),(43,24),(43,25),(44,25),(44,26),(44,27),(44,28)
-            ,(45,28),(45,29),(45,30),(45,31)
+            (32, 10), (32, 11), (32, 12), (33, 12), (33, 13), (33, 14), (33, 15), (34, 15), (35, 15),
+            (36, 15), (36, 14), (37, 14), (37, 13), (38, 13), (38, 12), (39, 12), (40, 12), (40, 11),
+            (41, 11), (41, 10), (41, 9), (42, 9), (43, 9), (43, 8), (43, 7), (44, 7), (45, 7), (45, 6), (46, 6),
+            (47, 6), (36, 16), (37, 16), (37, 17), (37, 18), (37, 19), (37, 20), (38, 20), (39, 20), (39, 21), (40, 21),
+            (41, 21), (41, 22), (42, 22), (42, 23), (43, 23), (43, 24), (43, 24), (43, 25), (44, 25), (44, 26),
+            (44, 27), (44, 28),(45, 28), (45, 29), (45, 30), (45, 31)
         ]
         self.grid = Grid(self.path)
         for x, y in self.grid.path:
@@ -160,7 +184,6 @@ class Game:
 
         self.alert_font = pygame.font.SysFont(None, 40)
         self.alerts = []
-
         self.weather_data = self.get_weather('ae1ead0422cc09d560db427bbc7c76c2')
 
         if not self.weather_data:
@@ -180,11 +203,21 @@ class Game:
         self.hiking_ability = self.calculate_hiking_ability()
         self.tourist_levels = ["beginner", "experienced", "professional"]
 
-        for level in self.tourist_levels:
-            self.grid.add_tourist(Tourist(self.path, self.hiking_ability, level))
         self.grid.add_animal('Z', self.hiking_ability)
         self.grid.add_animal('Z', self.hiking_ability)
         self.grid.add_animal('Z', self.hiking_ability)
+
+        self.grid.add_group(self.hiking_ability)
+
+        self.grid.add_tourist(
+            Tourist(self.path, 126 if random.random() > 0.6667 else (100 if random.random() < 0.3333 else 0),
+                    self.hiking_ability, "experienced"))
+        self.grid.add_tourist(
+            Tourist(self.path, 126 if random.random() > 0.6667 else (100 if random.random() < 0.3333 else 0),
+                    self.hiking_ability, "beginner"))
+        self.grid.add_tourist(
+            Tourist(self.path, 126 if random.random() > 0.6667 else (100 if random.random() < 0.3333 else 0),
+                    self.hiking_ability, "professional"))
 
     def get_weather(self, api_key):
         url = f"http://api.openweathermap.org/data/2.5/weather?q=Zakopane&appid={api_key}&units=metric"
@@ -237,6 +270,11 @@ class Game:
     def distance(self, x1, y1, x2, y2):
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
+    def check_tourist_in_group(self):
+        for tourist in self.grid.tourists:
+            if tourist.x == self.grid.group.x and tourist.y == self.grid.group.y and random.random() > 0.96:
+                self.grid.tourists.remove(tourist)
+
     def check_tourist_position(self):
         for tourist in self.grid.tourists:
             min_dist = float('inf')
@@ -263,24 +301,49 @@ class Game:
             y_offset -= alert_rect.height + 5
 
     def check_tourist_animal_proximity(self):
-        for tourist in self.grid.tourists:
-            tourist_x, tourist_y = tourist.x, tourist.y
+        alert_tourist = "Turysta zbyt blisko zwierzęcia!"
+        any_tourist_close = False
+
+        for tourist in self.grid.tourists[:]:
             tourist_close = False
             for animal in self.grid.animals:
-                animal_x, animal_y = animal.x, animal.y
-                dist = self.distance(tourist_x, tourist_y, animal_x, animal_y)
+                dist = self.distance(tourist.x, tourist.y, animal.x, animal.y)
                 if dist < 5:
                     tourist_close = True
-                    animal.closest_tourist=tourist
+                    any_tourist_close = True
+                    animal.closest_tourist = tourist
                     if dist == 0:
                         self.grid.tourists.remove(tourist)
                     break
 
-            if tourist_close and "Turysta zbyt blisko zwierzęcia!" not in self.alerts:
-                self.add_alert("Turysta zbyt blisko zwierzęcia!")
-            elif not tourist_close and "Turysta zbyt blisko zwierzęcia!" in self.alerts:
-                self.alerts.remove("Turysta zbyt blisko zwierzęcia!")
+            if not tourist_close:
+                for animal in self.grid.animals:
+                    if animal.closest_tourist == tourist:
+                        animal.closest_tourist = None
 
+        if any_tourist_close:
+            if alert_tourist not in self.alerts:
+                self.add_alert(alert_tourist)
+        else:
+            if alert_tourist in self.alerts:
+                self.alerts.remove(alert_tourist)
+
+    def check_group_animal_proximity(self):
+        alert_group = "Turyści zbyt blisko zwierzęcia!"
+
+        group_close = False
+        for animal in self.grid.animals:
+            if self.distance(self.grid.group.x, self.grid.group.y, animal.x, animal.y) < 5:
+                group_close = True
+                animal.closest_tourist = self.grid.group
+                break
+
+        if group_close:
+            if alert_group not in self.alerts:
+                self.add_alert(alert_group)
+        else:
+            if alert_group in self.alerts:
+                self.alerts.remove(alert_group)
 
     def check_hiking_ability_alert(self):
         if self.hiking_ability == 5:
@@ -302,9 +365,8 @@ class Game:
         GRAY = (220, 220, 220)
         ORANGE = (255, 165, 0)
 
-
         legend_width = 400
-        legend_height = 250
+        legend_height = 270
         legend_x = (WIDTH - legend_width) // 2
         legend_y = (HEIGHT - legend_height) // 2
 
@@ -337,6 +399,12 @@ class Game:
         text = font.render("Turysta profesjonalista", True, BLACK)
         screen.blit(text, (legend_x + 50, text_y))
         pygame.draw.rect(screen, PROFESSIONAL_COLOR, (legend_x + 20, text_y, 20, 20))
+
+        text_y += item_spacing
+
+        text = font.render("Grupa turystów", True, BLACK)
+        screen.blit(text, (legend_x + 50, text_y))
+        pygame.draw.rect(screen, YELLOW, (legend_x + 20, text_y, 20, 20))
 
         text_y += item_spacing
 
@@ -386,11 +454,14 @@ class Game:
                         tourist.move(self.grid.matrix)
                         tourist.last_move_time = current_time
                         self.check_tourist_animal_proximity()
+                        self.check_group_animal_proximity()
                         self.check_tourist_position()
+                        self.check_tourist_in_group()
 
                 self.grid.draw(self.win)
 
                 self.grid.move_animals()
+                self.grid.move_group()
 
                 self.draw_alerts()
 
@@ -414,18 +485,19 @@ class Game:
             hiking_ability = 5
         return hiking_ability
 
-
 class Tourist:
-    def __init__(self, path, hiking_ability, level):
+    def __init__(self, path, index, hiking_ability, level,direction=None):
         self.path = path
-        self.index = 0
-        self.x, self.y = path[0]
+        self.index = index
+        self.x, self.y = path[self.index]
         self.level = level
         self.hiking_ability = hiking_ability
         self.last_move_time = pygame.time.get_ticks()
         self.move_delay = 500
         self.move_prob = self.calculate_probability()
         self.previous_pos = None
+        self.direction = direction if direction is not None else (True if self.index == 0 else False)
+        self.disappear = None
 
     def calculate_probability(self):
         base_probability = {
@@ -435,7 +507,6 @@ class Tourist:
             4: 0.6,
             5: 0.5
         }.get(self.hiking_ability, 0.5)
-
         if self.level == "beginner":
             return base_probability * 0.8
         elif self.level == "experienced":
@@ -474,20 +545,48 @@ class Tourist:
                 return
 
         if self.previous_pos in self.path:
-            if self.index==100:
-                self.index=0
-            if self.index!=80:
-                self.index += 1
-                if self.index >= len(self.path):
-                    self.index = 0
+            if self.direction:
+                if self.index == 100:
+                    self.disappear=True
+                if self.index <80 or self.index>=101:
+                    self.index += 1
+                    if self.index >= len(self.path):
+                        self.disappear=True
+                        return
+                    self.pos = self.path[self.index]
+                    self.x, self.y = self.pos
+                    matrix[self.y][self.x] = 'T'
+                elif 80<self.index<100:
+                    if random.random()<0.3:
+                        self.pos = self.path[self.index]
+                        self.x, self.y = self.pos
+                        matrix[self.y][self.x] = 'T'
+                        return
+                    else:
+                        self.index+=1
+                else:
+                    if random.random() < self.move_prob / 3:
+                        self.index = 81
+                    else:
+                        self.index = 101
                 self.pos = self.path[self.index]
                 self.x, self.y = self.pos
                 matrix[self.y][self.x] = 'T'
             else:
-                if random.random()<self.move_prob/3:
-                    self.index=81
+                if self.index>101:
+                    self.index-=1
+                elif self.index == 101 or self.index == 81:
+                    self.index = 80
+                elif self.index>81 and self.index<=100:
+                    if random.random()<0.3:
+                        return
+                    else:
+                        self.index-=1
                 else:
-                    self.index=101
+                    self.index-=1
+                if self.index < 0:
+                    self.disappear = True
+                    return
                 self.pos = self.path[self.index]
                 self.x, self.y = self.pos
                 matrix[self.y][self.x] = 'T'
@@ -510,8 +609,7 @@ class Tourist:
         color = BEGINNER_COLOR if self.level == "beginner" else EXPERIENCED_COLOR if self.level == "experienced" else PROFESSIONAL_COLOR
         radius = 10
         pygame.draw.circle(win, color, (
-        self.x * CELL_SIZE + CELL_SIZE // 2 + x_offset, self.y * CELL_SIZE + CELL_SIZE // 2 + y_offset), radius)
-
+            self.x * CELL_SIZE + CELL_SIZE // 2 + x_offset, self.y * CELL_SIZE + CELL_SIZE // 2 + y_offset), radius)
 
 class Animal:
     def __init__(self, x, y, path, hiking_ability):
@@ -526,7 +624,7 @@ class Animal:
         self.move_prob = self.calculate_probability()
         self.disappearance_y = None
         self.disappear_time = None
-        self.closest_tourist=None
+        self.closest_tourist = None
 
     def calculate_probability(self):
         if self.hiking_ability == 1:
@@ -546,6 +644,12 @@ class Animal:
     def move(self, matrix):
         old_x, old_y = self.x, self.y
 
+        def dissapear():
+            self.disappeared = True
+            self.disappearance_x = old_x
+            self.disappearance_y = old_y
+            self.disappear_time = pygame.time.get_ticks()
+
         if not self.disappeared:
             matrix[old_y][old_x] = 'L'
             if (old_x, old_y) in self.path:
@@ -557,31 +661,40 @@ class Animal:
                 direction_x = old_x - self.closest_tourist.x
                 direction_y = old_y - self.closest_tourist.y
                 if direction_x != 0:
-                    if random.random() < 0.8:
+                    if random.random() < 0.9:
                         self.x += int(direction_x / abs(direction_x))
-                        matrix[self.y][self.x] = 'Z'
+                        if self.x < COLS and self.y < ROWS:
+                            matrix[self.y][self.x] = 'Z'
+                        else:
+                            dissapear()
                         return
                     else:
                         self.x -= int(direction_x / abs(direction_x))
-                        matrix[self.y][self.x] = 'Z'
+                        if self.x < COLS and self.y < ROWS:
+                            matrix[self.y][self.x] = 'Z'
+                        else:
+                            dissapear()
                         return
                 if direction_y != 0:
                     if random.random() < 0.8:
                         self.y += int(direction_y / abs(direction_y))
-                        matrix[self.y][self.x] = 'Z'
+                        if self.x < COLS and self.y < ROWS:
+                            matrix[self.y][self.x] = 'Z'
+                        else:
+                            dissapear()
                         return
                     else:
                         self.y -= int(direction_y / abs(direction_y))
-                        matrix[self.y][self.x] = 'Z'
+                        if self.x < COLS and self.y < ROWS:
+                            matrix[self.y][self.x] = 'Z'
+                        else:
+                            dissapear()
                         return
 
         if old_x < 0 or old_x >= COLS or old_y < 0 or old_y >= ROWS:
-            self.disappeared = True
-            self.disappearance_x = old_x
-            self.disappearance_y = old_y
-            self.disappear_time = pygame.time.get_ticks()
+            dissapear()
 
-        if self.disappeared and pygame.time.get_ticks() - self.disappear_time > random.randrange(1000, 6000, 1000):
+        if self.disappeared and self.closest_tourist is None:
             possible_positions = [
                 (x, y) for x in range(max(0, self.disappearance_x - 1), min(COLS, self.disappearance_x + 2))
                 for y in range(max(0, self.disappearance_y - 1), min(ROWS, self.disappearance_y + 2))
@@ -606,14 +719,77 @@ class Animal:
                     self.x, self.y = x, y
                     matrix[y][x] = 'Z'
                 else:
-                    self.disappeared = True
-                    self.disappearance_x = old_x
-                    self.disappearance_y = old_y
-                    self.disappear_time = pygame.time.get_ticks()
+                    dissapear()
 
     def draw(self, win, center_x, center_y):
         pygame.draw.circle(win, RED, (center_x, center_y), 10)
 
+class Group:
+    def __init__(self, path, hiking_ability, level):
+        self.path = path
+        self.index = 126 if random.random() > 0.6667 else (100 if random.random() < 0.3333 else 0)
+        self.x, self.y = self.path[self.index]
+        self.level = level
+        self.hiking_ability = hiking_ability
+        self.last_move_time = pygame.time.get_ticks()
+        self.move_delay = 500
+        self.move_prob = self.calculate_probability()
+        self.direction = True if self.index == 0 else False
+
+    def calculate_probability(self):
+        base_probability = {
+            1: 0.8,
+            2: 0.7,
+            3: 0.6,
+            4: 0.5,
+            5: 0.4
+        }.get(self.hiking_ability, 0.5)
+
+        if self.level == "beginner":
+            return base_probability * 0.8
+        elif self.level == "experienced":
+            return base_probability
+        elif self.level == "professional":
+            return base_probability * 1.2
+        else:
+            return base_probability
+
+    def move(self, matrix):
+        old_x, old_y = self.x, self.y
+        matrix[old_y][old_x] = "P"
+        if random.random() < 1 - self.move_prob:
+            return
+        else:
+            if not self.direction:
+                if 81 < self.index <= 100:
+                    if random.random() < 1-self.move_prob:
+                        return
+                    else:
+                        self.index-=1
+                elif self.index == 101:
+                    self.index = 80
+                else:
+                    self.index-=1
+            else:
+                if self.index == 100:
+                    self.index = 0
+                elif 81 < self.index < 100:
+                    if random.random() < 1-self.move_prob:
+                        return
+                if self.index != 80:
+                    self.index += 1
+                    if self.index >= len(self.path):
+                        self.index = 0
+                else:
+                    if random.random() < self.move_prob/2:
+                        self.index = 81
+                    else:
+                        self.index = 101
+        self.x, self.y = self.path[self.index]
+        matrix[self.y][self.x] = 'G'
+
+    def draw(self, win, center_x, center_y):
+        pygame.draw.circle(win, YELLOW, (center_x, center_y), 14)
 
 if __name__ == "__main__":
     game = Game()
