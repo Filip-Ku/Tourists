@@ -112,7 +112,13 @@ class Grid:
         if current_time - self.group.last_move_time > self.group.move_delay:
             self.group.move(self.matrix)
             self.group.last_move_time = current_time
-            if random.random()>0.97:
+            diff = 0.99 - 0.95
+            original_diff = 0.8 - 0.2
+
+            scale_factor = diff / original_diff
+
+            scaled_move_prob = scale_factor * (self.group.move_prob - 0.2) + 0.95
+            if random.random()>scaled_move_prob:
                 self.tourists.append(
                     Tourist(self.path,self.group.index,self.group.hiking_ability,
                             random.choice(["beginner", "experienced", "professional"]),random.choice([True, False])))
@@ -473,13 +479,13 @@ class Game:
         sys.exit()
 
     def calculate_hiking_ability(self):
-        if self.temperature > 15 and self.wind < 15:
+        if self.temperature > 15 and self.wind < 15 and self.humidity<0.92:
             hiking_ability = 1
-        elif self.temperature > 10 and self.wind < 20 and self.avalanche < 2:
+        elif self.temperature > 10 and self.wind < 20 and self.avalanche < 2 and self.humidity<0.94:
             hiking_ability = 2
-        elif self.temperature > 0 and self.wind < 25 and self.avalanche < 3:
+        elif self.temperature > 0 and self.wind < 25 and self.avalanche < 3 and self.humidity<0.96:
             hiking_ability = 3
-        elif self.temperature > -5 and self.wind < 30 and self.avalanche < 4:
+        elif self.temperature > -5 and self.wind < 30 and self.avalanche < 4 and self.humidity<0.98:
             hiking_ability = 4
         else:
             hiking_ability = 5
@@ -493,7 +499,7 @@ class Tourist:
         self.level = level
         self.hiking_ability = hiking_ability
         self.last_move_time = pygame.time.get_ticks()
-        self.move_delay = 500
+        self.move_delay = 1000
         self.move_prob = self.calculate_probability()
         self.previous_pos = None
         self.direction = direction if direction is not None else (True if self.index == 0 else False)
@@ -512,7 +518,7 @@ class Tourist:
         elif self.level == "experienced":
             return base_probability
         elif self.level == "professional":
-            return base_probability * 1.2
+            return base_probability * 1.1
         else:
             return base_probability
 
@@ -616,7 +622,7 @@ class Animal:
         self.x = x
         self.y = y
         self.path = path
-        self.move_delay = 500
+        self.move_delay = 1000
         self.last_move_time = pygame.time.get_ticks()
         self.disappeared = False
         self.disappearance_x = None
@@ -732,7 +738,7 @@ class Group:
         self.level = level
         self.hiking_ability = hiking_ability
         self.last_move_time = pygame.time.get_ticks()
-        self.move_delay = 500
+        self.move_delay = 1000
         self.move_prob = self.calculate_probability()
         self.direction = True if self.index == 0 else False
 
@@ -750,7 +756,7 @@ class Group:
         elif self.level == "experienced":
             return base_probability
         elif self.level == "professional":
-            return base_probability * 1.2
+            return base_probability * 1.1
         else:
             return base_probability
 
