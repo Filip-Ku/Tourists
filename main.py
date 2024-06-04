@@ -278,7 +278,14 @@ class Game:
 
     def check_tourist_in_group(self):
         for tourist in self.grid.tourists:
-            if tourist.x == self.grid.group.x and tourist.y == self.grid.group.y and random.random() > 0.96:
+            diff = 0.99 - 0.95
+            original_diff = 0.9 - 0.5
+
+            scale_factor = diff / original_diff
+
+            scaled_move_prob = scale_factor * (tourist.move_prob - 0.2) + 0.95
+            print(scaled_move_prob)
+            if tourist.x == self.grid.group.x and tourist.y == self.grid.group.y and random.random() > scaled_move_prob:
                 self.grid.tourists.remove(tourist)
 
     def check_tourist_position(self):
