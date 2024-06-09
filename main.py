@@ -105,19 +105,19 @@ class Grid:
                 animal.last_move_time = current_time
 
     def add_group(self, hiking_ability):
-        self.group = Group(self.path, hiking_ability, "experienced")
+        self.group = Group(self.path, hiking_ability, "beginner")
 
     def move_group(self):
         current_time = pygame.time.get_ticks()
         if current_time - self.group.last_move_time > self.group.move_delay:
             self.group.move(self.matrix)
             self.group.last_move_time = current_time
-            diff = 0.99 - 0.95
+            diff = 0.99 - 0.97
             original_diff = 0.8 - 0.2
 
             scale_factor = diff / original_diff
 
-            scaled_move_prob = scale_factor * (self.group.move_prob - 0.2) + 0.95
+            scaled_move_prob = scale_factor * (self.group.move_prob - 0.2) + 0.97
             if random.random()>scaled_move_prob:
                 self.tourists.append(
                     Tourist(self.path,self.group.index,self.group.hiking_ability,
@@ -284,7 +284,6 @@ class Game:
             scale_factor = diff / original_diff
 
             scaled_move_prob = scale_factor * (tourist.move_prob - 0.2) + 0.95
-            print(scaled_move_prob)
             if tourist.x == self.grid.group.x and tourist.y == self.grid.group.y and random.random() > scaled_move_prob:
                 self.grid.tourists.remove(tourist)
 
@@ -384,7 +383,6 @@ class Game:
         legend_y = (HEIGHT - legend_height) // 2
 
         pygame.draw.rect(screen, ORANGE, (legend_x - 5, legend_y - 5, legend_width + 10, legend_height + 10))
-        # Rysowanie prostokąta tła
         pygame.draw.rect(screen, GRAY, (legend_x, legend_y, legend_width, legend_height))
 
         font = pygame.font.SysFont("comicsansms", 36)
@@ -392,7 +390,6 @@ class Game:
         title_text_rect = title_text.get_rect(center=(legend_x + legend_width // 2, legend_y + 20))
         screen.blit(title_text, title_text_rect)
 
-        # Rysowanie elementów legendy
         text_y = legend_y + 50
         item_spacing = 30
 
@@ -486,13 +483,13 @@ class Game:
         sys.exit()
 
     def calculate_hiking_ability(self):
-        if self.temperature > 15 and self.wind < 15 and self.humidity<0.92:
+        if self.temperature > 15 and self.wind < 15  and self.humidity<99:
             hiking_ability = 1
-        elif self.temperature > 10 and self.wind < 20 and self.avalanche < 2 and self.humidity<0.94:
+        elif self.temperature > 8 and self.wind < 20 and self.avalanche < 2 and self.humidity<99.2:
             hiking_ability = 2
-        elif self.temperature > 0 and self.wind < 25 and self.avalanche < 3 and self.humidity<0.96:
+        elif self.temperature > 0 and self.wind < 25 and self.avalanche < 3 and self.humidity<99.5:
             hiking_ability = 3
-        elif self.temperature > -5 and self.wind < 30 and self.avalanche < 4 and self.humidity<0.98:
+        elif self.temperature > -5 and self.wind < 30 and self.avalanche < 4 and self.humidity<99.8:
             hiking_ability = 4
         else:
             hiking_ability = 5
@@ -521,7 +518,7 @@ class Tourist:
             5: 0.5
         }.get(self.hiking_ability, 0.5)
         if self.level == "beginner":
-            return base_probability * 0.8
+            return base_probability * 0.9
         elif self.level == "experienced":
             return base_probability
         elif self.level == "professional":
@@ -590,7 +587,7 @@ class Tourist:
                     self.index-=1
                 elif self.index == 101 or self.index == 81:
                     self.index = 80
-                elif self.index>81 and self.index<=100:
+                elif 81 < self.index <= 100:
                     if random.random()<0.3:
                         return
                     else:
@@ -759,7 +756,7 @@ class Group:
         }.get(self.hiking_ability, 0.5)
 
         if self.level == "beginner":
-            return base_probability * 0.8
+            return base_probability * 0.9
         elif self.level == "experienced":
             return base_probability
         elif self.level == "professional":
