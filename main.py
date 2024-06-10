@@ -28,6 +28,7 @@ LEGEND_BTN_TEXT_COLOR = BLACK
 LEGEND_BTN_WIDTH = 100
 LEGEND_BTN_HEIGHT = 40
 
+
 class Grid:
     def __init__(self, path):
         self.path = path
@@ -118,10 +119,10 @@ class Grid:
             scale_factor = diff / original_diff
 
             scaled_move_prob = scale_factor * (self.group.move_prob - 0.2) + 0.97
-            if random.random()>scaled_move_prob:
+            if random.random() > scaled_move_prob:
                 self.tourists.append(
-                    Tourist(self.path,self.group.index,self.group.hiking_ability,
-                            random.choice(["beginner", "experienced", "professional"]),random.choice([True, False])))
+                    Tourist(self.path, self.group.index, self.group.hiking_ability,
+                            random.choice(["beginner", "experienced", "professional"]), random.choice([True, False])))
 
     def draw_button(self, screen):
         pygame.draw.rect(screen, BLACK, (WIDTH - LEGEND_BTN_WIDTH - 10, 10, LEGEND_BTN_WIDTH, LEGEND_BTN_HEIGHT))
@@ -163,6 +164,7 @@ class Grid:
         pygame.draw.polygon(screen, BLUE,
                             [(42 * 30 + 5, 19 * 30 + 4), (42 * 30 + 5, 19 * 30 + 24), (42 * 30 + 25, 19 * 30 + 14)])
 
+
 class Game:
     def __init__(self):
         self.win = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -181,7 +183,7 @@ class Game:
             (41, 11), (41, 10), (41, 9), (42, 9), (43, 9), (43, 8), (43, 7), (44, 7), (45, 7), (45, 6), (46, 6),
             (47, 6), (36, 16), (37, 16), (37, 17), (37, 18), (37, 19), (37, 20), (38, 20), (39, 20), (39, 21), (40, 21),
             (41, 21), (41, 22), (42, 22), (42, 23), (43, 23), (43, 24), (43, 24), (43, 25), (44, 25), (44, 26),
-            (44, 27), (44, 28),(45, 28), (45, 29), (45, 30), (45, 31)
+            (44, 27), (44, 28), (45, 28), (45, 29), (45, 30), (45, 31)
         ]
         self.grid = Grid(self.path)
         for x, y in self.grid.path:
@@ -483,20 +485,21 @@ class Game:
         sys.exit()
 
     def calculate_hiking_ability(self):
-        if self.temperature > 15 and self.wind < 15  and self.humidity<99:
+        if self.temperature > 15 and self.wind < 10 and self.humidity < 90:
             hiking_ability = 1
-        elif self.temperature > 8 and self.wind < 20 and self.avalanche < 2 and self.humidity<99.2:
+        elif self.temperature > 8 and self.wind < 15 and self.avalanche < 2 and self.humidity < 95:
             hiking_ability = 2
-        elif self.temperature > 0 and self.wind < 25 and self.avalanche < 3 and self.humidity<99.5:
+        elif self.temperature > 0 and self.wind < 20 and self.avalanche < 3 and self.humidity <= 99:
             hiking_ability = 3
-        elif self.temperature > -5 and self.wind < 30 and self.avalanche < 4 and self.humidity<99.8:
+        elif self.temperature > -5 and self.wind < 30 and self.avalanche < 4:
             hiking_ability = 4
         else:
             hiking_ability = 5
         return hiking_ability
 
+
 class Tourist:
-    def __init__(self, path, index, hiking_ability, level,direction=None):
+    def __init__(self, path, index, hiking_ability, level, direction=None):
         self.path = path
         self.index = index
         self.x, self.y = path[self.index]
@@ -540,8 +543,7 @@ class Tourist:
             self.x, self.y = old_x, old_y
             matrix[self.y][self.x] = 'T'
             return
-
-        if random.random() <= (1 - self.move_prob) / 2:
+        if random.random() <= (1 - self.move_prob)/ 5:
             possible_positions = []
             for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
                 new_x, new_y = old_x + dx, old_y + dy
@@ -557,23 +559,23 @@ class Tourist:
         if self.previous_pos in self.path:
             if self.direction:
                 if self.index == 100:
-                    self.disappear=True
-                if self.index <80 or self.index>=101:
+                    self.disappear = True
+                if self.index < 80 or self.index >= 101:
                     self.index += 1
                     if self.index >= len(self.path):
-                        self.disappear=True
+                        self.disappear = True
                         return
                     self.pos = self.path[self.index]
                     self.x, self.y = self.pos
                     matrix[self.y][self.x] = 'T'
-                elif 80<self.index<100:
-                    if random.random()<0.3:
+                elif 80 < self.index < 100:
+                    if random.random() < 0.3:
                         self.pos = self.path[self.index]
                         self.x, self.y = self.pos
                         matrix[self.y][self.x] = 'T'
                         return
                     else:
-                        self.index+=1
+                        self.index += 1
                 else:
                     if random.random() < self.move_prob / 3:
                         self.index = 81
@@ -583,17 +585,17 @@ class Tourist:
                 self.x, self.y = self.pos
                 matrix[self.y][self.x] = 'T'
             else:
-                if self.index>101:
-                    self.index-=1
+                if self.index > 101:
+                    self.index -= 1
                 elif self.index == 101 or self.index == 81:
                     self.index = 80
                 elif 81 < self.index <= 100:
-                    if random.random()<0.3:
+                    if random.random() < 0.3:
                         return
                     else:
-                        self.index-=1
+                        self.index -= 1
                 else:
-                    self.index-=1
+                    self.index -= 1
                 if self.index < 0:
                     self.disappear = True
                     return
@@ -603,7 +605,7 @@ class Tourist:
         else:
             next_x, next_y = self.path[(self.index + 1) % len(self.path)]
             diff_x, diff_y = next_x - self.x, next_y - self.y
-            if random.random() > 0.5:
+            if random.random() > 0.3:
                 if diff_x > 0:
                     self.x += 1
                 elif diff_x < 0:
@@ -620,6 +622,7 @@ class Tourist:
         radius = 10
         pygame.draw.circle(win, color, (
             self.x * CELL_SIZE + CELL_SIZE // 2 + x_offset, self.y * CELL_SIZE + CELL_SIZE // 2 + y_offset), radius)
+
 
 class Animal:
     def __init__(self, x, y, path, hiking_ability):
@@ -734,6 +737,7 @@ class Animal:
     def draw(self, win, center_x, center_y):
         pygame.draw.circle(win, RED, (center_x, center_y), 10)
 
+
 class Group:
     def __init__(self, path, hiking_ability, level):
         self.path = path
@@ -772,26 +776,26 @@ class Group:
         else:
             if not self.direction:
                 if 81 < self.index <= 100:
-                    if random.random() < 1-self.move_prob:
+                    if random.random() < 1 - self.move_prob:
                         return
                     else:
-                        self.index-=1
+                        self.index -= 1
                 elif self.index == 101:
                     self.index = 80
                 else:
-                    self.index-=1
+                    self.index -= 1
             else:
                 if self.index == 100:
                     self.index = 0
                 elif 81 < self.index < 100:
-                    if random.random() < 1-self.move_prob:
+                    if random.random() < 1 - self.move_prob:
                         return
                 if self.index != 80:
                     self.index += 1
                     if self.index >= len(self.path):
                         self.index = 0
                 else:
-                    if random.random() < self.move_prob/2:
+                    if random.random() < self.move_prob / 3:
                         self.index = 81
                     else:
                         self.index = 101
@@ -800,6 +804,7 @@ class Group:
 
     def draw(self, win, center_x, center_y):
         pygame.draw.circle(win, YELLOW, (center_x, center_y), 14)
+
 
 if __name__ == "__main__":
     game = Game()
